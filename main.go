@@ -4,7 +4,6 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"log"
-	"time"
 )
 
 const GAME_WIDTH = 800
@@ -13,7 +12,6 @@ const GAME_HEIGHT = 600
 type Game struct {
 	tank     *Tank
 	missiles []*Missile
-	lastShot time.Time
 }
 
 func NewTank(x, y float32) *Tank {
@@ -34,21 +32,20 @@ func NewMissile(x, y float32, direction Direction) *Missile {
 		x:         x,
 		y:         y,
 		direction: direction,
+		active:    true,
 	}
 }
 
 func (g *Game) Update() error {
 	g.tank.Update()
 
-	if ebiten.IsKeyPressed(ebiten.KeyW) && time.Since(g.lastShot) > time.Millisecond*100 {
-		g.lastShot = time.Now()
-		g.missiles = append(g.missiles, NewMissile(g.tank.x, g.tank.y, g.tank.direction))
-	}
-	for i := len(g.missiles) - 1; i >= 0; i-- {
-		g.missiles[i].Move()
-		if g.missiles[i].x < 0 || g.missiles[i].x > GAME_WIDTH || g.missiles[i].y < 0 || g.missiles[i].y > GAME_HEIGHT {
-			g.missiles = append(g.missiles[:i], g.missiles[i+1:]...)
+	if g.tank.fireRequested {
+		if m := g.tank.Fire(); m != nil {
+			g.missiles = append(g.missiles, m)
 		}
+	}
+	for _, m := range g.missiles {
+		m.Move()
 	}
 	return nil
 }
