@@ -8,16 +8,30 @@ import (
 	"log"
 )
 
-type Game struct{}
+type Game struct {
+	x, y float32 // our position
+}
 
 func (g *Game) Update() error {
+	if ebiten.IsKeyPressed(ebiten.KeyUp) {
+		g.y -= 5
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyDown) {
+		g.y += 5
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyLeft) {
+		g.x -= 5
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyRight) {
+		g.x += 5
+	}
 	return nil
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
-	ebitenutil.DebugPrint(screen, "Tank Game!") // shows the text
+	ebitenutil.DebugPrint(screen, "Use arrow keys to move the tank") // shows the text
 	tankColor := color.RGBA{255, 0, 0, 255}
-	vector.DrawFilledCircle(screen, 50, 50, 30, tankColor, false) //draw a circle
+	vector.DrawFilledCircle(screen, g.x, g.y, 15, tankColor, false) //draw a circle
 
 }
 
