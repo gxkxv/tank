@@ -23,7 +23,7 @@ func main() {
 	g := &Game{}
 
 	ebiten.SetWindowSize(800, 600)
-	ebiten.SetWindowResizable(true)
+	ebiten.SetWindowResizable(false)
 	ebiten.SetWindowTitle("Tank Game")
 	if err := ebiten.RunGame(g); err != nil {
 		log.Fatal(err)
