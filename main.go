@@ -20,6 +20,7 @@ func NewTank(x, y float32) *Tank {
 		y:         y,
 		speed:     5,
 		direction: STOP,
+		ptDir:     DOWN,
 	}
 }
 

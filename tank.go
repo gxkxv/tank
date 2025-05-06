@@ -12,10 +12,10 @@ type Tank struct {
 	x, y          float32 // our position
 	speed         float32 // speed
 	direction     Direction
+	ptDir         Direction
 	fireRequested bool
-
-	lastFiredAt time.Time
-	prevFireKey bool // last status W
+	lastFiredAt   time.Time
+	prevFireKey   bool // last status W
 }
 
 const (
@@ -54,7 +54,22 @@ func (t *Tank) Update() {
 	} else {
 		t.direction = STOP
 	}
+	fireKeyPressed := ebiten.IsKeyPressed(ebiten.KeyW)
+	now := time.Now()
+	// make some delay
+	if fireKeyPressed && !t.prevFireKey && now.Sub(t.lastFiredAt) > 800*time.Millisecond {
+		t.fireRequested = true
+		t.lastFiredAt = now
+	}
+	//cant hold
+	t.prevFireKey = fireKeyPressed
+	if t.direction != STOP {
+		t.ptDir = t.direction
+	}
+	t.move()
+}
 
+func (t *Tank) move() {
 	switch t.direction {
 	case LEFT:
 		t.x -= t.speed
@@ -77,20 +92,41 @@ func (t *Tank) Update() {
 		t.x -= t.speed
 		t.y += t.speed
 	}
-	fireKeyPressed := ebiten.IsKeyPressed(ebiten.KeyW)
-	now := time.Now()
-	// make some delay
-	if fireKeyPressed && !t.prevFireKey && now.Sub(t.lastFiredAt) > 800*time.Millisecond {
-		t.fireRequested = true
-		t.lastFiredAt = now
+
+	if t.direction != STOP {
+		t.ptDir = t.direction
 	}
-	//cant hold
-	t.prevFireKey = fireKeyPressed
 }
 
 func (t *Tank) Draw(screen *ebiten.Image) {
 	tankColor := color.RGBA{255, 0, 0, 255}
 	vector.DrawFilledCircle(screen, t.x, t.y, 15, tankColor, false) //draw a circle
+
+	cx, cy := t.x, t.y
+	var ex, ey float32
+
+	switch t.ptDir {
+	case LEFT:
+		ex, ey = cx-25, cy
+	case LEFT_UP:
+		ex, ey = cx-20, cy-20
+	case UP:
+		ex, ey = cx, cy-25
+	case RIGHT_UP:
+		ex, ey = cx+20, cy-20
+	case RIGHT:
+		ex, ey = cx+25, cy
+	case RIGHT_DOWN:
+		ex, ey = cx+20, cy+20
+	case DOWN:
+		ex, ey = cx, cy+25
+	case LEFT_DOWN:
+		ex, ey = cx-20, cy+20
+	default:
+		ex, ey = cx, cy
+	}
+
+	vector.StrokeLine(screen, cx, cy, ex, ey, 3, tankColor, false)
 }
 
 func (t *Tank) Fire() *Missile {
