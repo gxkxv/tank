@@ -22,13 +22,14 @@ func NewTank(x, y float32) *Tank {
 		speed:     5,
 		direction: STOP,
 		ptDir:     DOWN,
+		live:      true,
 	}
 }
 
 func NewGame() *Game {
 	return &Game{
 		tank:      NewTank(GAME_WIDTH/2, GAME_HEIGHT/2), // Игровой танк
-		enemyTank: NewTank(GAME_WIDTH/4, GAME_HEIGHT/4), // Вражеский танк (фиксированная позиция для примера)
+		enemyTank: NewTank(200, 300),                    // Вражеский танк (фиксированная позиция для примера)
 	}
 }
 
@@ -46,7 +47,7 @@ func (g *Game) Update() error {
 	g.tank.Update()
 
 	// Обновляем врага
-	g.enemyTank.Update()
+	//g.enemyTank.UpdateAutomatically()
 
 	// Выстрелы нашего танка
 	if g.tank.fireRequested {
@@ -65,6 +66,7 @@ func (g *Game) Update() error {
 	// Двигаем все снаряды
 	for _, m := range g.missiles {
 		m.Move()
+		m.hitTank(g.enemyTank)
 	}
 
 	// Очищаем неактивные снаряды

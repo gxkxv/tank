@@ -16,6 +16,7 @@ type Tank struct {
 	fireRequested bool
 	lastFiredAt   time.Time
 	prevFireKey   bool // last status W
+	live          bool // Жив ли танк
 }
 
 const (
@@ -99,6 +100,10 @@ func (t *Tank) move() {
 }
 
 func (t *Tank) Draw(screen *ebiten.Image) {
+	if !t.IsLive() {
+		return
+	}
+
 	tankColor := color.RGBA{255, 0, 0, 255}
 	vector.DrawFilledCircle(screen, t.x, t.y, 15, tankColor, false) //draw a circle
 
@@ -138,3 +143,30 @@ func (t *Tank) Fire() *Missile {
 	my := t.y + 15/2 - MissileRadius/2
 	return NewMissile(mx, my, t.direction)
 }
+
+func (t *Tank) SetLive(live bool) {
+	t.live = live
+}
+
+func (t *Tank) IsLive() bool {
+	return t.live
+}
+
+// GetRect возвращает прямоугольник, представляющий границы танка
+func (t *Tank) GetRect() *Rectangle {
+	// Возвращаем прямоугольник с границами танка
+	return &Rectangle{x: t.x, y: t.y, width: 15, height: 15}
+}
+
+//func (t *Tank) UpdateAutomatically() {
+//	// Или случайное движение (например, вправо или вниз)
+//	if rand.Float32() < 0.25 {
+//		t.x += t.speed
+//	} else if rand.Float32() > 0.25 && rand.Float32() < 0.5 {
+//		t.y += t.speed
+//	} else if rand.Float32() > 0.5 && rand.Float32() < 0.75 {
+//		t.y -= t.speed
+//	} else if rand.Float32() > 0.75 && rand.Float32() < 1 {
+//		t.x -= t.speed
+//	}
+//}
