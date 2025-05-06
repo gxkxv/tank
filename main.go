@@ -2,14 +2,14 @@ package main
 
 import (
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/vector"
 	"image/color"
 	"log"
 )
 
 type Game struct {
-	x, y float32 // our position
+	x, y      float32 // our position
+	offScreen *ebiten.Image
 }
 
 func (g *Game) Update() error {
@@ -29,17 +29,21 @@ func (g *Game) Update() error {
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
-	ebitenutil.DebugPrint(screen, "Use arrow keys to move the tank") // shows the text
+	g.offScreen.Clear()
+	g.offScreen.Fill(color.RGBA{255, 255, 255, 255})
 	tankColor := color.RGBA{255, 0, 0, 255}
-	vector.DrawFilledCircle(screen, g.x, g.y, 15, tankColor, false) //draw a circle
+	vector.DrawFilledCircle(g.offScreen, g.x, g.y, 15, tankColor, false) //draw a circle
 
+	screen.DrawImage(g.offScreen, nil)
 }
 
 func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
 	return 800, 600 // screen size
 }
 func main() {
-	g := &Game{}
+	g := &Game{
+		offScreen: ebiten.NewImage(640, 480),
+	}
 
 	// set window size
 	ebiten.SetWindowSize(800, 600)
