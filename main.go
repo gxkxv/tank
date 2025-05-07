@@ -62,7 +62,7 @@ func NewGame() *Game {
 			NewObstacle(440, 400, 60, 100, Building),
 		},
 
-		enemyCount: 7,
+		enemyCount: 2,
 	}
 	g.tank = NewTank(GAME_WIDTH/2, GAME_HEIGHT/2, true, g)
 	return g
@@ -87,6 +87,10 @@ func (g *Game) Update() error {
 	case g.state.Is(StatePlaying):
 		// Обновляем наш танк
 		g.tank.Update()
+
+		if inpututil.IsKeyJustPressed(ebiten.KeyP) {
+			g.state.Set(StatePaused)
+		}
 
 		for _, enemy := range g.enemyTanks {
 			enemy.Update()
@@ -161,10 +165,9 @@ func (g *Game) Update() error {
 		}
 
 	case g.state.Is(StatePaused):
-		if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
+		if inpututil.IsKeyJustPressed(ebiten.KeyP) {
 			g.state.Set(StatePlaying)
 		}
-
 	case g.state.Is(StateGameOver), g.state.Is(StateWin):
 		if inpututil.IsKeyJustPressed(ebiten.KeyEnter) {
 			g.resetGame()
@@ -219,17 +222,38 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	case g.state.Is(StatePaused):
 		ebitenutil.DrawRect(screen, 0, 0, 800, 600, color.RGBA{0, 0, 0, 150})
 		DrawTextCentered(screen, "PAUSED", 400, 300, color.White)
-		DrawTextCentered(screen, "Press ESC to continue", 400, 350, color.White)
+		DrawTextCentered(screen, "Press P to continue", 400, 350, color.White)
 
 	case g.state.Is(StateGameOver):
 		ebitenutil.DrawRect(screen, 0, 0, 800, 600, color.RGBA{0, 0, 0, 200})
 		DrawTextCentered(screen, "GAME OVER", 400, 250, color.White)
 		DrawTextCentered(screen, "Press ENTER to restart", 400, 300, color.White)
+		if inpututil.IsKeyJustPressed(ebiten.KeyArrowUp) && g.enemyCount < 20 {
+			g.enemyCount++
+		}
+		if inpututil.IsKeyJustPressed(ebiten.KeyArrowDown) && g.enemyCount > 1 {
+			g.enemyCount--
+		}
+		if inpututil.IsKeyJustPressed(ebiten.KeyEnter) {
+			g.launchFrame()
+			g.state.Set(StatePlaying)
+		}
 
 	case g.state.Is(StateWin):
 		ebitenutil.DrawRect(screen, 0, 0, 800, 600, color.RGBA{0, 0, 0, 200})
 		DrawTextCentered(screen, "VICTORY!", 400, 250, color.White)
 		DrawTextCentered(screen, "Press ENTER to play again", 400, 300, color.White)
+		if inpututil.IsKeyJustPressed(ebiten.KeyArrowUp) && g.enemyCount < 20 {
+			g.enemyCount++
+		}
+		if inpututil.IsKeyJustPressed(ebiten.KeyArrowDown) && g.enemyCount > 1 {
+			g.enemyCount--
+		}
+		if inpututil.IsKeyJustPressed(ebiten.KeyEnter) {
+			g.launchFrame()
+			g.state.Set(StatePlaying)
+		}
+
 	}
 	// Рисуем количество оставшихся танков
 	ebitenutil.DebugPrintAt(screen, "Tanks left: "+strconv.Itoa(len(g.enemyTanks)), GAME_WIDTH/2, GAME_HEIGHT/2)
