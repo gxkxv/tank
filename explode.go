@@ -2,48 +2,32 @@ package main
 
 import (
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/vector"
+	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"image/color"
 )
 
 type Explode struct {
-	x, y     float32
-	step     int
-	diameter []int
-	live     bool
-	game     *Game
+	x, y      float32
+	radius    float32
+	maxradius float32
+	duration  int
 }
 
-const (
-	EXPLOSION_STEPS = 10
-)
-
-func NewExplode(x, y float32, g *Game) *Explode {
+func NewExplosion(x, y float32) *Explode {
 	return &Explode{
-		x:        x,
-		y:        y,
-		step:     0,
-		diameter: []int{4, 7, 12, 18, 26, 32, 49, 30, 14, 6},
-		live:     true,
-		game:     g,
+		x:         x,
+		y:         y,
+		maxradius: 30,
+		duration:  20,
 	}
 }
+
+func (e *Explode) Update() bool {
+	e.radius = e.maxradius * (1 - float32(e.duration)/20)
+	e.duration--
+	return e.duration > 0
+}
+
 func (e *Explode) Draw(screen *ebiten.Image) {
-	if !e.live {
-		return
-	}
-
-	if e.step >= len(e.diameter) {
-		e.live = false
-		return
-	}
-
-	explosionColor := color.RGBA{255, 165, 0, 255} // Orange color for explosion
-	vector.DrawFilledCircle(screen, e.x, e.y, float32(e.diameter[e.step]), explosionColor, false)
-
-	e.step++
-}
-
-func (e *Explode) IsLive() bool {
-	return e.live
+	ebitenutil.DrawCircle(screen, float64(e.x), float64(e.y), float64(e.radius), color.RGBA{255, 150, 0, 150})
 }

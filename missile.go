@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/vector"
 	"image/color"
@@ -25,6 +24,8 @@ type Missile struct {
 	direction Direction
 	active    bool
 	game      Game
+	good      bool
+	live      bool
 }
 
 const (
@@ -77,27 +78,23 @@ func (m *Missile) GetRect() *Rectangle {
 	return &Rectangle{x: m.x, y: m.y, width: MissileRadius * 2, height: MissileRadius * 2}
 }
 
-// hitTank проверяет, столкнулся ли снаряд с танком
-func (m *Missile) hitTank(t *Tank) bool {
-	if m.GetRect().Intersects(t.GetRect()) && t.IsLive() {
-		t.SetLive(false) // Уничтожение танка
-		m.active = false // Уничтожение снаряда
-		m.game.AddExplosion(t.x, t.y)
+func (m *Missile) hitTank(t *Tank, g *Game) bool {
+	if m.active && m.GetRect().Intersects(t.GetRect()) && t.IsLive() && m.good != t.good {
+		t.SetLive(false)
+		m.active = false
+		g.explodes = append(g.explodes, NewExplosion(t.x, t.y)) // 💥 BOOM!
 		return true
 	}
 	return false
 }
 
-func (m *Missile) hitTanks(tanks []*Tank) ([]*Tank, bool) {
-	for i := 0; i < len(tanks); i++ {
-		if m.hitTank(tanks[i]) {
-			// Удаляем танк из среза
-			tanks = append(tanks[:i], tanks[i+1:]...)
-			fmt.Println("Enemies left:", len(tanks)) // Проверка количества врагов
-			return tanks, true
+func (m *Missile) hitTanks(tanks []*Tank, g *Game) bool {
+	for _, t := range tanks {
+		if m.hitTank(t, g) {
+			return true
 		}
 	}
-	return tanks, false
+	return false
 }
 
 //func (m *Missile) hitTanks(tanks []*Tank) {

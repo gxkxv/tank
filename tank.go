@@ -4,6 +4,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/vector"
 	"image/color"
+	"math/rand"
 	"time"
 )
 
@@ -17,8 +18,11 @@ type Tank struct {
 	lastFiredAt   time.Time
 	prevFireKey   bool // last status W
 	live          bool // Жив ли танк
-
+	good          bool
+	step          int
 }
+
+var r = rand.New(rand.NewSource(time.Now().UnixNano()))
 
 const (
 	STOP = iota
@@ -33,33 +37,41 @@ const (
 )
 
 func (t *Tank) Update() {
-	if ebiten.IsKeyPressed(ebiten.KeyLeft) {
-		if ebiten.IsKeyPressed(ebiten.KeyUp) {
-			t.direction = LEFT_UP
-		} else if ebiten.IsKeyPressed(ebiten.KeyDown) {
-			t.direction = LEFT_DOWN
-		} else {
-			t.direction = LEFT
-		}
-	} else if ebiten.IsKeyPressed(ebiten.KeyRight) {
-		if ebiten.IsKeyPressed(ebiten.KeyUp) {
-			t.direction = RIGHT_UP
-		} else if ebiten.IsKeyPressed(ebiten.KeyDown) {
-			t.direction = RIGHT_DOWN
-		} else {
-			t.direction = RIGHT
-		}
-	} else if ebiten.IsKeyPressed(ebiten.KeyUp) {
-		t.direction = UP
-	} else if ebiten.IsKeyPressed(ebiten.KeyDown) {
-		t.direction = DOWN
-	} else {
-		t.direction = STOP
+	if !t.good { // Для вражеских танков
+		t.randomMove() // Двигаемся в случайном направлении
 	}
-	fireKeyPressed := ebiten.IsKeyPressed(ebiten.KeyW)
+	fireKeyPressed := false // Делаем выстрел в случайный момент времени для врага
+
+	if t.good {
+		if ebiten.IsKeyPressed(ebiten.KeyLeft) {
+			if ebiten.IsKeyPressed(ebiten.KeyUp) {
+				t.direction = LEFT_UP
+			} else if ebiten.IsKeyPressed(ebiten.KeyDown) {
+				t.direction = LEFT_DOWN
+			} else {
+				t.direction = LEFT
+			}
+		} else if ebiten.IsKeyPressed(ebiten.KeyRight) {
+			if ebiten.IsKeyPressed(ebiten.KeyUp) {
+				t.direction = RIGHT_UP
+			} else if ebiten.IsKeyPressed(ebiten.KeyDown) {
+				t.direction = RIGHT_DOWN
+			} else {
+				t.direction = RIGHT
+			}
+		} else if ebiten.IsKeyPressed(ebiten.KeyUp) {
+			t.direction = UP
+		} else if ebiten.IsKeyPressed(ebiten.KeyDown) {
+			t.direction = DOWN
+		} else {
+			t.direction = STOP
+		}
+		fireKeyPressed = ebiten.IsKeyPressed(ebiten.KeyW)
+	}
+
 	now := time.Now()
 	// make some delay
-	if fireKeyPressed && !t.prevFireKey && now.Sub(t.lastFiredAt) > 800*time.Millisecond {
+	if fireKeyPressed && !t.prevFireKey && now.Sub(t.lastFiredAt) > 1*time.Millisecond {
 		t.fireRequested = true
 		t.lastFiredAt = now
 	}
@@ -70,7 +82,31 @@ func (t *Tank) Update() {
 	}
 	t.move()
 }
+func (t *Tank) randomMove() {
+	if t.step == 0 {
+		t.step = r.Intn(12) + 3 // Генерируем случайное количество шагов
+		dirIdx := r.Intn(9)     // Случайное направление
+		t.direction = Direction(dirIdx)
+	}
 
+	t.step--
+	if r.Intn(40) > 38 { // С вероятностью 5% танк стрельнет
+		t.fireRequested = true
+	}
+	if t.x < 0 {
+		t.x = 0
+	}
+	if t.y < 0 {
+		t.y = 0
+	}
+	if t.x > GAME_WIDTH-15 { // Минус радиус танка (15 пикселей)
+		t.x = GAME_WIDTH - 15
+	}
+	if t.y > GAME_HEIGHT-15 { // Минус радиус танка (15 пикселей)
+		t.y = GAME_HEIGHT - 15
+	}
+
+}
 func (t *Tank) move() {
 	switch t.direction {
 	case LEFT:
@@ -98,14 +134,31 @@ func (t *Tank) move() {
 	if t.direction != STOP {
 		t.ptDir = t.direction
 	}
+	if t.x < 0 {
+		t.x = 0
+	}
+	if t.y < 0 {
+		t.y = 0
+	}
+	if t.x > GAME_WIDTH-15 { // Минус радиус танка (15 пикселей)
+		t.x = GAME_WIDTH - 15
+	}
+	if t.y > GAME_HEIGHT-15 { // Минус радиус танка (15 пикселей)
+		t.y = GAME_HEIGHT - 15
+	}
+
 }
 
 func (t *Tank) Draw(screen *ebiten.Image) {
-	if !t.IsLive() {
+	if !t.live {
 		return
 	}
 
 	tankColor := color.RGBA{255, 0, 0, 255}
+
+	if !t.good {
+		tankColor = color.RGBA{0, 255, 0, 255}
+	}
 	vector.DrawFilledCircle(screen, t.x, t.y, 15, tankColor, false) //draw a circle
 
 	cx, cy := t.x, t.y
@@ -134,7 +187,6 @@ func (t *Tank) Draw(screen *ebiten.Image) {
 
 	vector.StrokeLine(screen, cx, cy, ex, ey, 3, tankColor, false)
 }
-
 func (t *Tank) Fire() *Missile {
 	t.fireRequested = false
 	if t.direction == STOP {
@@ -142,7 +194,13 @@ func (t *Tank) Fire() *Missile {
 	}
 	mx := t.x + 15/2 - MissileRadius/2
 	my := t.y + 15/2 - MissileRadius/2
-	return NewMissile(mx, my, t.direction)
+	return &Missile{
+		x:         mx,
+		y:         my,
+		direction: t.ptDir,
+		active:    true,
+		good:      t.good,
+	}
 }
 
 func (t *Tank) SetLive(live bool) {
