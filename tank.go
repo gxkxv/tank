@@ -17,6 +17,7 @@ type Tank struct {
 	lastFiredAt   time.Time
 	prevFireKey   bool // last status W
 	live          bool // Жив ли танк
+
 }
 
 const (

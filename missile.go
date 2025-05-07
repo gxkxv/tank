@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/vector"
 	"image/color"
@@ -23,6 +24,7 @@ type Missile struct {
 	x, y      float32
 	direction Direction
 	active    bool
+	game      Game
 }
 
 const (
@@ -80,7 +82,35 @@ func (m *Missile) hitTank(t *Tank) bool {
 	if m.GetRect().Intersects(t.GetRect()) && t.IsLive() {
 		t.SetLive(false) // Уничтожение танка
 		m.active = false // Уничтожение снаряда
+		m.game.AddExplosion(t.x, t.y)
 		return true
 	}
 	return false
 }
+
+func (m *Missile) hitTanks(tanks []*Tank) ([]*Tank, bool) {
+	for i := 0; i < len(tanks); i++ {
+		if m.hitTank(tanks[i]) {
+			// Удаляем танк из среза
+			tanks = append(tanks[:i], tanks[i+1:]...)
+			fmt.Println("Enemies left:", len(tanks)) // Проверка количества врагов
+			return tanks, true
+		}
+	}
+	return tanks, false
+}
+
+//func (m *Missile) hitTanks(tanks []*Tank) {
+//	for i := len(tanks) - 1; i >= 0; i-- {
+//		if m.getRect().Intersects(tanks[i].getRect()) && tanks[i].isLive() {
+//			tanks[i].setLive(false)
+//			m.setActive(false) // Уничтожаем снаряд
+//			explode := NewExplode(tanks[i].x, tanks[i].y, m.tc)
+//			m.tc.explodes = append(m.tc.explodes, explode)
+//
+//			// Удаляем уничтоженный танк
+//			tanks = append(tanks[:i], tanks[i+1:]...)
+//			break
+//		}
+//	}
+//}
