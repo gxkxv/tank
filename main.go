@@ -20,9 +20,10 @@ type Game struct {
 	explodes   []*Explode
 	obstacles  []*Obstacle
 	state      *GameState
+	enemyCount int
 }
 
-func NewTank(x, y float32, g bool) *Tank {
+func NewTank(x, y float32, g bool, game *Game) *Tank {
 	return &Tank{
 		x:         x,
 		y:         y,
@@ -31,28 +32,39 @@ func NewTank(x, y float32, g bool) *Tank {
 		ptDir:     DOWN,
 		live:      true,
 		good:      g,
+		game:      game,
 	}
 }
 
 func NewGame() *Game {
 	g := &Game{
-		state:      &GameState{},
-		tank:       NewTank(GAME_WIDTH/2, GAME_HEIGHT/2, true), //Игровой танк
+		state:      &GameState{}, //Игровой танк
 		enemyTanks: []*Tank{},
 		obstacles: []*Obstacle{
-			// Здания
-			NewObstacle(100, 100, 80, 120, Building),
-			NewObstacle(600, 150, 100, 150, Building),
+			// Здания по углам
+			NewObstacle(50, 50, 80, 120, Building),
+			NewObstacle(670, 50, 80, 120, Building),
+			NewObstacle(50, 430, 80, 120, Building),
+			NewObstacle(670, 430, 80, 120, Building),
 
-			// Камни
-			NewObstacle(200, 400, 40, 40, Rock),
-			NewObstacle(300, 500, 50, 50, Rock),
+			// Камни в середине левого и правого краёв
+			NewObstacle(100, 250, 40, 40, Rock),
+			NewObstacle(100, 300, 40, 40, Rock),
+			NewObstacle(660, 250, 40, 40, Rock),
+			NewObstacle(660, 300, 40, 40, Rock),
 
-			// Кусты (проходимые, но ограничивающие обзор)
-			NewObstacle(400, 200, 60, 60, Bush),
-			NewObstacle(500, 300, 80, 80, Bush),
+			// Кусты по центру карты
+			NewObstacle(370, 200, 60, 60, Bush),
+			NewObstacle(370, 320, 60, 60, Bush),
+
+			// Дополнительные "забавные" здания как укрытия
+			NewObstacle(300, 100, 60, 100, Building),
+			NewObstacle(440, 400, 60, 100, Building),
 		},
+
+		enemyCount: 7,
 	}
+	g.tank = NewTank(GAME_WIDTH/2, GAME_HEIGHT/2, true, g)
 	return g
 
 }
@@ -163,7 +175,7 @@ func (g *Game) Update() error {
 }
 
 func (g *Game) resetGame() {
-	g.tank = NewTank(GAME_WIDTH/2, GAME_WIDTH/2, true)
+	g.tank = NewTank(GAME_WIDTH/2, GAME_WIDTH/2, true, g)
 	g.enemyTanks = []*Tank{}
 	g.missiles = nil
 	g.explodes = nil
@@ -174,6 +186,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	screen.Fill(color.RGBA{30, 30, 30, 255})
 	ebitenutil.DebugPrint(screen, "Use arrow keys to navigate.")
 	g.tank.Draw(screen)
+	drawSuperAttackIcon(screen, g.tank)
 	for _, obs := range g.obstacles {
 		obs.Draw(screen)
 	}
@@ -192,6 +205,16 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	case g.state.Is(StateMenu):
 		DrawTextCentered(screen, "TANKS BATTLE", 400, 200, color.White)
 		DrawTextCentered(screen, "Press ENTER to start", 400, 300, color.White)
+		if inpututil.IsKeyJustPressed(ebiten.KeyArrowUp) && g.enemyCount < 20 {
+			g.enemyCount++
+		}
+		if inpututil.IsKeyJustPressed(ebiten.KeyArrowDown) && g.enemyCount > 1 {
+			g.enemyCount--
+		}
+		if inpututil.IsKeyJustPressed(ebiten.KeyEnter) {
+			g.launchFrame()
+			g.state.Set(StatePlaying)
+		}
 
 	case g.state.Is(StatePaused):
 		ebitenutil.DrawRect(screen, 0, 0, 800, 600, color.RGBA{0, 0, 0, 150})
@@ -217,10 +240,11 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
 }
 
 func (g *Game) launchFrame() {
-	for i := 0; i < 2; i++ {
-		g.enemyTanks = append(g.enemyTanks, NewTank(float32(rand.Intn(GAME_WIDTH)), float32(rand.Intn(GAME_HEIGHT)), false))
+	for i := 0; i < g.enemyCount; i++ {
+		x := float32(rand.Intn(GAME_WIDTH - 40))
+		y := float32(rand.Intn(GAME_HEIGHT - 40))
+		g.enemyTanks = append(g.enemyTanks, NewTank(x, y, false, g))
 	}
-
 }
 
 func main() {

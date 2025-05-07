@@ -2,8 +2,10 @@ package main
 
 import (
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/vector"
 	"image/color"
+	"math"
 	"math/rand"
 	"time"
 )
@@ -20,6 +22,8 @@ type Tank struct {
 	live          bool // Жив ли танк
 	good          bool
 	step          int
+	game          *Game
+	lastSuperTime time.Time
 }
 
 var r = rand.New(rand.NewSource(time.Now().UnixNano()))
@@ -80,7 +84,13 @@ func (t *Tank) Update() {
 	if t.direction != STOP {
 		t.ptDir = t.direction
 	}
+	if ebiten.IsKeyPressed(ebiten.KeyA) && time.Since(t.lastSuperTime) > 5*time.Second {
+		t.lastSuperTime = time.Now()
+		t.PerformSuperAttack(t.game) // передай ссылку на Game
+	}
+
 	t.move()
+
 }
 func (t *Tank) randomMove() {
 	if t.step == 0 {
@@ -216,16 +226,84 @@ func (t *Tank) GetRect() *Rectangle {
 	// Возвращаем прямоугольник с границами танка
 	return &Rectangle{x: t.x, y: t.y, width: 15, height: 15}
 }
+func (t *Tank) PerformSuperAttack(g *Game) {
+	if !t.good || !t.live {
+		return
+	}
 
-//func (t *Tank) UpdateAutomatically() {
-//	// Или случайное движение (например, вправо или вниз)
-//	if rand.Float32() < 0.25 {
-//		t.x += t.speed
-//	} else if rand.Float32() > 0.25 && rand.Float32() < 0.5 {
-//		t.y += t.speed
-//	} else if rand.Float32() > 0.5 && rand.Float32() < 0.75 {
-//		t.y -= t.speed
-//	} else if rand.Float32() > 0.75 && rand.Float32() < 1 {
-//		t.x -= t.speed
-//	}
-//}
+	const (
+		count     = 5           // количество взрывов в волне
+		spacing   = float32(40) // расстояние между взрывами
+		radiusHit = float32(30) // радиус поражения
+	)
+
+	// Начальная позиция — центр танка
+	startX, startY := t.x, t.y
+	dirX, dirY := directionVector(t.ptDir)
+
+	for i := 1; i <= count; i++ {
+		ex := startX + dirX*spacing*float32(i)
+		ey := startY + dirY*spacing*float32(i)
+
+		g.explodes = append(g.explodes, NewExplosion(ex, ey))
+
+		// Уничтожаем врагов в радиусе
+		var aliveEnemies []*Tank
+		for _, e := range g.enemyTanks {
+			if distance(ex, ey, e.x, e.y) < radiusHit {
+				e.live = false
+				g.explodes = append(g.explodes, NewExplosion(e.x, e.y))
+			} else {
+				aliveEnemies = append(aliveEnemies, e)
+			}
+		}
+		g.enemyTanks = aliveEnemies
+	}
+}
+
+func distance(x1, y1, x2, y2 float32) float32 {
+	dx := x2 - x1
+	dy := y2 - y1
+	return float32(math.Sqrt(float64(dx*dx + dy*dy)))
+}
+func directionVector(dir Direction) (float32, float32) {
+	switch dir {
+	case LEFT:
+		return -1, 0
+	case LEFT_UP:
+		return -0.7, -0.7
+	case UP:
+		return 0, -1
+	case RIGHT_UP:
+		return 0.7, -0.7
+	case RIGHT:
+		return 1, 0
+	case RIGHT_DOWN:
+		return 0.7, 0.7
+	case DOWN:
+		return 0, 1
+	case LEFT_DOWN:
+		return -0.7, 0.7
+	default:
+		return 0, -1 // по умолчанию вверх
+	}
+}
+func drawSuperAttackIcon(screen *ebiten.Image, t *Tank) {
+	x, y := GAME_WIDTH-60, GAME_HEIGHT-60
+
+	// Фон и рамка
+	ebitenutil.DrawRect(screen, float64(x), float64(y), 50, 50, color.RGBA{80, 80, 80, 255})
+
+	// Прозрачная заливка — оставшееся время кулдауна
+	cd := time.Since(t.lastSuperTime)
+	cooldown := 5 * time.Second
+
+	if cd < cooldown {
+		// вычисляем сколько залить (чем меньше осталось — тем выше заливка)
+		h := 50 * (1 - float64(cd)/float64(cooldown))
+		ebitenutil.DrawRect(screen, float64(x), float64(y)+h, 50, 50-h, color.RGBA{255, 0, 0, 180})
+	} else {
+		// готов к атаке — подсветим зелёным
+		ebitenutil.DrawRect(screen, float64(x), float64(y), 50, 50, color.RGBA{0, 255, 0, 80})
+	}
+}
